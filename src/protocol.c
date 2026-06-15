@@ -4,6 +4,9 @@
 #include "field.h"
 
 #include <stdint.h>
+#include <stdlib.h>
+
+#include "stm32f0xx.h"
 
 #define FRAME_BUFFER_SIZE 32
 #define FIELD_SIZE 10
@@ -12,6 +15,8 @@ static uint8_t shot_row = 0;
 static uint8_t shot_col = 0;
 static uint8_t sfr_count = 0;
 static uint8_t game_over = 0;
+
+static uint32_t seed_counter = 1;
 
 void protocol_send_message(const char msg_id[3], const uint8_t *payload, uint8_t len) {
     uint8_t crc_data[32];
@@ -66,6 +71,7 @@ void protocol_receive_frame(void) {
     // MSG-ID steht bei buffer[1], buffer[2], buffer[3]
     if(buffer[1] == 'S' && buffer[2] == 'T' && buffer[3] == 'R')
     {
+        srand(seed_counter++); // Für random seed
         field_init();
 
             shot_row = 0;

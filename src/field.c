@@ -1,4 +1,5 @@
 #include "field.h"
+#include <stdlib.h>
 
 #define FIELD_SIZE 10
 
@@ -7,10 +8,81 @@ static uint8_t hit_count = 0;
 static uint8_t ship_field[FIELD_SIZE][FIELD_SIZE];
 static uint8_t shot_field[FIELD_SIZE][FIELD_SIZE];
 
+static uint8_t can_place_ship(uint8_t row, uint8_t col,
+                              uint8_t length, uint8_t vertical)
+{
+    for(uint8_t i = 0; i < length; i++)
+    {
+        uint8_t r = row + (vertical ? i : 0);
+        uint8_t c = col + (vertical ? 0 : i);
+
+        // Schiff würde außerhalb des Spielfelds liegen
+        if(r >= FIELD_SIZE || c >= FIELD_SIZE)
+        {
+            return 0;
+        }
+
+        // Alle Nachbarfelder prüfen
+        for(int8_t dr = -1; dr <= 1; dr++)
+        {
+            for(int8_t dc = -1; dc <= 1; dc++)
+            {
+                int8_t rr = r + dr;
+                int8_t cc = c + dc;
+
+                if(rr >= 0 &&
+                   rr < FIELD_SIZE &&
+                   cc >= 0 &&
+                   cc < FIELD_SIZE)
+                {
+                    if(ship_field[rr][cc] != 0)
+                    {
+                        return 0;
+                    }
+                }
+            }
+        }
+    }
+
+    return 1;
+}
+
+static void place_ship(uint8_t row, uint8_t col,
+                       uint8_t length, uint8_t vertical)
+{
+    for(uint8_t i = 0; i < length; i++)
+    {
+        uint8_t r = row + (vertical ? i : 0);
+        uint8_t c = col + (vertical ? 0 : i);
+
+        ship_field[r][c] = length;
+    }
+}
+
+static void place_random_ship(uint8_t length)
+{
+    uint8_t placed = 0;
+
+    while(!placed)
+    {
+        uint8_t vertical = rand() % 2;
+
+        uint8_t row = rand() % FIELD_SIZE;
+        uint8_t col = rand() % FIELD_SIZE;
+
+        if(can_place_ship(row, col, length, vertical))
+        {
+            place_ship(row, col, length, vertical);
+            placed = 1;
+        }
+    }
+}
+
 void field_init(void)
 {
     hit_count = 0;
 
+    // Spielfeld leeren
     for(uint8_t row = 0; row < FIELD_SIZE; row++)
     {
         for(uint8_t col = 0; col < FIELD_SIZE; col++)
@@ -19,49 +91,24 @@ void field_init(void)
             shot_field[row][col] = 0;
         }
     }
+
     // 1x Länge 5
-    ship_field[0][0] = 5;
-    ship_field[0][1] = 5;
-    ship_field[0][2] = 5;
-    ship_field[0][3] = 5;
-    ship_field[0][4] = 5;
+    place_random_ship(5);
 
     // 2x Länge 4
-    ship_field[0][6] = 4;
-    ship_field[0][7] = 4;
-    ship_field[0][8] = 4;
-    ship_field[0][9] = 4;
-
-    ship_field[2][0] = 4;
-    ship_field[2][1] = 4;
-    ship_field[2][2] = 4;
-    ship_field[2][3] = 4;
+    place_random_ship(4);
+    place_random_ship(4);
 
     // 3x Länge 3
-    ship_field[2][5] = 3;
-    ship_field[2][6] = 3;
-    ship_field[2][7] = 3;
-
-    ship_field[2][9] = 3;
-    ship_field[3][9] = 3;
-    ship_field[4][9] = 3;
-
-    ship_field[4][0] = 3;
-    ship_field[4][1] = 3;
-    ship_field[4][2] = 3;
+    place_random_ship(3);
+    place_random_ship(3);
+    place_random_ship(3);
 
     // 4x Länge 2
-    ship_field[4][4] = 2;
-    ship_field[4][5] = 2;
-
-    ship_field[4][7] = 2;
-    ship_field[5][7] = 2;
-
-    ship_field[6][0] = 2;
-    ship_field[6][1] = 2;
-
-    ship_field[6][3] = 2;
-    ship_field[6][4] = 2;
+    place_random_ship(2);
+    place_random_ship(2);
+    place_random_ship(2);
+    place_random_ship(2);
 }
 
 uint8_t field_shot_at(uint8_t row, uint8_t col)
