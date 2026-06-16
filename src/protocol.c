@@ -344,12 +344,18 @@ void protocol_receive_frame(void) {
 
     else if(buffer[1] == 'S' && buffer[2] == 'F' && buffer[3] == 'R')
     {
+        sfr_count++;
+
         if(game_over == 1)
         {
-            return; // SFR nach Spielende nur schlucken, nicht beantworten
-        }
+            if(sfr_count >= 10)
+            {
+                sfr_count = 0;
+                game_over = 0;
+            }
 
-        sfr_count++;
+            return;
+        }
 
         if(sfr_count >= 10)
         {

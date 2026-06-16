@@ -30,10 +30,7 @@ static uint8_t can_place_ship(uint8_t row, uint8_t col,
                 int8_t rr = r + dr;
                 int8_t cc = c + dc;
 
-                if(rr >= 0 &&
-                   rr < FIELD_SIZE &&
-                   cc >= 0 &&
-                   cc < FIELD_SIZE)
+                if(rr >= 0 && rr < FIELD_SIZE && cc >= 0 && cc < FIELD_SIZE)
                 {
                     if(ship_field[rr][cc] != 0)
                     {
@@ -59,56 +56,56 @@ static void place_ship(uint8_t row, uint8_t col,
     }
 }
 
-static void place_random_ship(uint8_t length)
+static uint8_t place_random_ship(uint8_t length)
 {
-    uint8_t placed = 0;
-
-    while(!placed)
+    for(uint16_t tries = 0; tries < 1000; tries++)
     {
         uint8_t vertical = rand() % 2;
-
         uint8_t row = rand() % FIELD_SIZE;
         uint8_t col = rand() % FIELD_SIZE;
 
         if(can_place_ship(row, col, length, vertical))
         {
             place_ship(row, col, length, vertical);
-            placed = 1;
+            return 1;
         }
     }
+
+    return 0;
 }
 
 void field_init(void)
 {
-    hit_count = 0;
+    uint8_t success = 0;
 
-    // Spielfeld leeren
-    for(uint8_t row = 0; row < FIELD_SIZE; row++)
+    while(!success)
     {
-        for(uint8_t col = 0; col < FIELD_SIZE; col++)
+        success = 1;
+        hit_count = 0;
+
+        for(uint8_t row = 0; row < FIELD_SIZE; row++)
         {
-            ship_field[row][col] = 0;
-            shot_field[row][col] = 0;
+            for(uint8_t col = 0; col < FIELD_SIZE; col++)
+            {
+                ship_field[row][col] = 0;
+                shot_field[row][col] = 0;
+            }
         }
+
+        if(!place_random_ship(5)) success = 0;
+
+        if(!place_random_ship(4)) success = 0;
+        if(!place_random_ship(4)) success = 0;
+
+        if(!place_random_ship(3)) success = 0;
+        if(!place_random_ship(3)) success = 0;
+        if(!place_random_ship(3)) success = 0;
+
+        if(!place_random_ship(2)) success = 0;
+        if(!place_random_ship(2)) success = 0;
+        if(!place_random_ship(2)) success = 0;
+        if(!place_random_ship(2)) success = 0;
     }
-
-    // 1x Länge 5
-    place_random_ship(5);
-
-    // 2x Länge 4
-    place_random_ship(4);
-    place_random_ship(4);
-
-    // 3x Länge 3
-    place_random_ship(3);
-    place_random_ship(3);
-    place_random_ship(3);
-
-    // 4x Länge 2
-    place_random_ship(2);
-    place_random_ship(2);
-    place_random_ship(2);
-    place_random_ship(2);
 }
 
 uint8_t field_shot_at(uint8_t row, uint8_t col)

@@ -41,9 +41,18 @@ void uart_send_string(char *text)
     }
 }
 
-uint8_t uart_receive_byte(void) {
-    while(!(USART2->ISR & USART_ISR_RXNE)) {
+uint8_t uart_receive_byte(void)
+{
+    while(1)
+    {
+        if(USART2->ISR & USART_ISR_ORE)
+        {
+            USART2->ICR = USART_ICR_ORECF;
+        }
 
+        if(USART2->ISR & USART_ISR_RXNE)
+        {
+            return USART2->RDR;
+        }
     }
-    return USART2->RDR;
 }
