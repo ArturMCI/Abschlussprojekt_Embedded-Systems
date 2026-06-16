@@ -21,6 +21,10 @@ static uint8_t target_row = 0;
 static uint8_t target_col = 0;
 static uint8_t target_direction = 0;
 
+static uint8_t hit_count_strategy = 0;
+static uint8_t hit_rows[5];
+static uint8_t hit_cols[5];
+
 static uint8_t sfr_count = 0;
 static uint8_t game_over = 0;
 static uint32_t seed_counter = 1;
@@ -68,6 +72,8 @@ static void reset_fire_logic(void)
     target_row = 0;
     target_col = 0;
     target_direction = 0;
+
+    hit_count_strategy = 0;
 }
 
 static uint8_t get_target_shot(uint8_t *row, uint8_t *col)
@@ -114,8 +120,103 @@ static uint8_t get_target_shot(uint8_t *row, uint8_t *col)
     return 0;
 }
 
+static uint8_t get_line_shot(uint8_t *row, uint8_t *col)
+{
+    if(hit_count_strategy < 2)
+    {
+        return 0;
+    }
+
+    uint8_t horizontal = 1;
+    uint8_t vertical = 1;
+
+    for(uint8_t i = 1; i < hit_count_strategy; i++)
+    {
+        if(hit_rows[i] != hit_rows[0])
+        {
+            horizontal = 0;
+        }
+
+        if(hit_cols[i] != hit_cols[0])
+        {
+            vertical = 0;
+        }
+    }
+
+    if(!horizontal && !vertical)
+    {
+        return 0;
+    }
+
+    uint8_t min_row = hit_rows[0];
+    uint8_t max_row = hit_rows[0];
+    uint8_t min_col = hit_cols[0];
+    uint8_t max_col = hit_cols[0];
+
+    for(uint8_t i = 1; i < hit_count_strategy; i++)
+    {
+        if(hit_rows[i] < min_row) min_row = hit_rows[i];
+        if(hit_rows[i] > max_row) max_row = hit_rows[i];
+
+        if(hit_cols[i] < min_col) min_col = hit_cols[i];
+        if(hit_cols[i] > max_col) max_col = hit_cols[i];
+    }
+
+    if(horizontal)
+    {
+        uint8_t r = hit_rows[0];
+
+        if(min_col > 0 && fired_field[r][min_col - 1] == 0)
+        {
+            *row = r;
+            *col = min_col - 1;
+            fired_field[*row][*col] = 1;
+            return 1;
+        }
+
+        if(max_col < FIELD_SIZE - 1 && fired_field[r][max_col + 1] == 0)
+        {
+            *row = r;
+            *col = max_col + 1;
+            fired_field[*row][*col] = 1;
+            return 1;
+        }
+    }
+
+    if(vertical)
+    {
+        uint8_t c = hit_cols[0];
+
+        if(min_row > 0 && fired_field[min_row - 1][c] == 0)
+        {
+            *row = min_row - 1;
+            *col = c;
+            fired_field[*row][*col] = 1;
+            return 1;
+        }
+
+        if(max_row < FIELD_SIZE - 1 && fired_field[max_row + 1][c] == 0)
+        {
+            *row = max_row + 1;
+            *col = c;
+            fired_field[*row][*col] = 1;
+            return 1;
+        }
+    }
+
+    hit_count_strategy = 0;
+    target_active = 0;
+
+    return 0;
+}
+
 static void get_next_shot(uint8_t *row, uint8_t *col)
 {
+    if(get_line_shot(row, col))
+    {
+        return;
+    }
+
     if(target_active)
     {
         if(get_target_shot(row, col))
@@ -227,6 +328,13 @@ void protocol_receive_frame(void) {
 
         if(hit)
         {
+            if(hit_count_strategy < 5)
+            {
+                hit_rows[hit_count_strategy] = last_shot_row;
+                hit_cols[hit_count_strategy] = last_shot_col;
+                hit_count_strategy++;
+            }
+
             target_active = 1;
             target_row = last_shot_row;
             target_col = last_shot_col;
