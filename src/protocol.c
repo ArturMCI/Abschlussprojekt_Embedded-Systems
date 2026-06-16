@@ -13,6 +13,14 @@
 
 static uint8_t fired_field[FIELD_SIZE][FIELD_SIZE];
 
+static uint8_t last_shot_row = 0;
+static uint8_t last_shot_col = 0;
+
+static uint8_t target_active = 0;
+static uint8_t target_row = 0;
+static uint8_t target_col = 0;
+static uint8_t target_direction = 0;
+
 static uint8_t sfr_count = 0;
 static uint8_t game_over = 0;
 static uint32_t seed_counter = 1;
@@ -55,10 +63,67 @@ static void reset_fire_logic(void)
             fired_field[row][col] = 0;
         }
     }
+
+    target_active = 0;
+    target_row = 0;
+    target_col = 0;
+    target_direction = 0;
 }
 
-static void get_random_shot(uint8_t *row, uint8_t *col)
+static uint8_t get_target_shot(uint8_t *row, uint8_t *col)
 {
+    while(target_direction < 4)
+    {
+        int8_t r = target_row;
+        int8_t c = target_col;
+
+        if(target_direction == 0)      // oben
+        {
+            r--;
+        }
+        else if(target_direction == 1) // unten
+        {
+            r++;
+        }
+        else if(target_direction == 2) // links
+        {
+            c--;
+        }
+        else if(target_direction == 3) // rechts
+        {
+            c++;
+        }
+
+        target_direction++;
+
+        if(r >= 0 && r < FIELD_SIZE && c >= 0 && c < FIELD_SIZE)
+        {
+            if(fired_field[r][c] == 0)
+            {
+                fired_field[r][c] = 1;
+
+                *row = r;
+                *col = c;
+
+                return 1;
+            }
+        }
+    }
+
+    target_active = 0;
+    return 0;
+}
+
+static void get_next_shot(uint8_t *row, uint8_t *col)
+{
+    if(target_active)
+    {
+        if(get_target_shot(row, col))
+        {
+            return;
+        }
+    }
+
     while(1)
     {
         uint8_t r = rand() % FIELD_SIZE;
@@ -102,11 +167,10 @@ void protocol_receive_frame(void) {
     {
         srand(seed_counter++); // Für random seed
         field_init();
+        reset_fire_logic();
 
-            reset_fire_logic();
-
-            sfr_count = 0;
-            game_over = 0;
+        sfr_count = 0;
+        game_over = 0;
 
         uint8_t name[] = "TEAM01";
         protocol_send_message("STR", name, 6);
@@ -148,10 +212,26 @@ void protocol_receive_frame(void) {
         uint8_t shot_r;
         uint8_t shot_c;
 
-        get_random_shot(&shot_r, &shot_c);
+        get_next_shot(&shot_r, &shot_c);
+
+        last_shot_row = shot_r;
+        last_shot_col = shot_c;
 
         uint8_t shot[] = {shot_r, shot_c};
         protocol_send_message("BOO", shot, 2);
+    }
+    
+    else if(buffer[1] == 'B' && buffer[2] == 'M' && buffer[3] == 'R')
+    {
+        uint8_t hit = (buffer[5] == 'H');
+
+        if(hit)
+        {
+            target_active = 1;
+            target_row = last_shot_row;
+            target_col = last_shot_col;
+            target_direction = 0;
+        }
     }
 
     else if(buffer[1] == 'S' && buffer[2] == 'F' && buffer[3] == 'R')
