@@ -11,11 +11,10 @@
 #define FRAME_BUFFER_SIZE 32
 #define FIELD_SIZE 10
 
-static uint8_t shot_row = 0;
-static uint8_t shot_col = 0;
+static uint8_t fired_field[FIELD_SIZE][FIELD_SIZE];
+
 static uint8_t sfr_count = 0;
 static uint8_t game_over = 0;
-
 static uint32_t seed_counter = 1;
 
 void protocol_send_message(const char msg_id[3], const uint8_t *payload, uint8_t len) {
@@ -47,6 +46,36 @@ void protocol_send_message(const char msg_id[3], const uint8_t *payload, uint8_t
     uart_send_byte('$');
 }
 
+static void reset_fire_logic(void)
+{
+    for(uint8_t row = 0; row < FIELD_SIZE; row++)
+    {
+        for(uint8_t col = 0; col < FIELD_SIZE; col++)
+        {
+            fired_field[row][col] = 0;
+        }
+    }
+}
+
+static void get_random_shot(uint8_t *row, uint8_t *col)
+{
+    while(1)
+    {
+        uint8_t r = rand() % FIELD_SIZE;
+        uint8_t c = rand() % FIELD_SIZE;
+
+        if(fired_field[r][c] == 0)
+        {
+            fired_field[r][c] = 1;
+
+            *row = r;
+            *col = c;
+
+            return;
+        }
+    }
+}
+
 void protocol_receive_frame(void) {
     uint8_t buffer[FRAME_BUFFER_SIZE];
     uint8_t index = 0;
@@ -74,8 +103,8 @@ void protocol_receive_frame(void) {
         srand(seed_counter++); // Für random seed
         field_init();
 
-            shot_row = 0;
-            shot_col = 0;
+            reset_fire_logic();
+
             sfr_count = 0;
             game_over = 0;
 
@@ -116,21 +145,13 @@ void protocol_receive_frame(void) {
         uint8_t result[] = { hit ? 'H' : 'M' };
         protocol_send_message("BMR", result, 1);
 
-        uint8_t shot[] = {shot_row, shot_col};
+        uint8_t shot_r;
+        uint8_t shot_c;
+
+        get_random_shot(&shot_r, &shot_c);
+
+        uint8_t shot[] = {shot_r, shot_c};
         protocol_send_message("BOO", shot, 2);
-
-        shot_col++;
-
-        if(shot_col >= 10)
-        {
-            shot_col = 0;
-            shot_row++;
-        }
-
-        if(shot_row >= 10)
-        {
-            shot_row = 0;
-        }
     }
 
     else if(buffer[1] == 'S' && buffer[2] == 'F' && buffer[3] == 'R')
