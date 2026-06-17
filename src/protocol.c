@@ -2,6 +2,7 @@
 #include "uart.h"
 #include "crc.h"
 #include "field.h"
+#include "led_matrix.h"
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -29,7 +30,10 @@ static uint8_t sfr_count = 0;
 static uint8_t game_over = 0;
 static uint32_t seed_counter = 1;
 
-void protocol_send_message(const char msg_id[3], const uint8_t *payload, uint8_t len) {
+void protocol_send_message(const char msg_id[3], const uint8_t *payload, uint8_t len)
+{
+    led_matrix_pause();
+
     uint8_t crc_data[32];
     uint8_t crc;
 
@@ -38,7 +42,8 @@ void protocol_send_message(const char msg_id[3], const uint8_t *payload, uint8_t
     crc_data[2] = msg_id[2];
     crc_data[3] = len;
 
-    for(uint8_t i = 0; i < len; i++) {
+    for(uint8_t i = 0; i < len; i++)
+    {
         crc_data[4 + i] = payload[i];
     }
 
@@ -50,12 +55,15 @@ void protocol_send_message(const char msg_id[3], const uint8_t *payload, uint8_t
     uart_send_byte(msg_id[2]);
     uart_send_byte(len);
 
-    for(uint8_t i = 0; i < len; i++) {
+    for(uint8_t i = 0; i < len; i++)
+    {
         uart_send_byte(payload[i]);
     }
 
     uart_send_byte(crc);
     uart_send_byte('$');
+
+    led_matrix_resume();
 }
 
 static void reset_fire_logic(void)
@@ -243,6 +251,7 @@ static void get_next_shot(uint8_t *row, uint8_t *col)
 }
 
 void protocol_receive_frame(void) {
+
     uint8_t buffer[FRAME_BUFFER_SIZE];
     uint8_t index = 0;
     uint8_t byte;
@@ -251,6 +260,8 @@ void protocol_receive_frame(void) {
         byte = uart_receive_byte();
     }
     while (byte != '#');
+
+    led_matrix_pause();
 
     buffer[index++] = byte;
 
@@ -262,6 +273,8 @@ void protocol_receive_frame(void) {
             break;
         }
     }
+
+    led_matrix_resume();
 
     // MSG-ID steht bei buffer[1], buffer[2], buffer[3]
     if(buffer[1] == 'S' && buffer[2] == 'T' && buffer[3] == 'R')
@@ -284,6 +297,8 @@ void protocol_receive_frame(void) {
         field_get_checksum(cs);
 
         protocol_send_message("CSH", cs, 10);
+
+        led_matrix_show_field();
     }
 
     else if(buffer[1] == 'B' && buffer[2] == 'O' && buffer[3] == 'O')
@@ -292,6 +307,12 @@ void protocol_receive_frame(void) {
         uint8_t col = buffer[6];
 
         uint8_t hit = field_shot_at(row, col);
+
+        if(hit)
+        {
+            led_matrix_blink_hit(row, col);
+            led_matrix_set(row, col, 0);
+        }
 
         if(field_all_ships_hit())
         {

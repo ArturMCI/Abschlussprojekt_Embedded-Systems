@@ -25,10 +25,12 @@ void uart_init(void) {
     USART2->CR1 |= USART_CR1_UE;
 }
 
-void uart_send_byte(uint8_t data) {
-    while(!(USART2->ISR & USART_ISR_TXE)) {
-
+void uart_send_byte(uint8_t data)
+{
+    while(!(USART2->ISR & USART_ISR_TXE))
+    {
     }
+
     USART2->TDR = data;
 }
 

@@ -164,3 +164,13 @@ uint8_t field_all_ships_hit(void)
 {
     return hit_count >= 30;
 }
+
+uint8_t field_has_ship(uint8_t row, uint8_t col)
+{
+    if(row >= FIELD_SIZE || col >= FIELD_SIZE)
+    {
+        return 0;
+    }
+
+    return ship_field[row][col] >= 2 && ship_field[row][col] <= 5;
+}

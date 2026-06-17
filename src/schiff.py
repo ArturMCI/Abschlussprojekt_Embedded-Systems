@@ -475,6 +475,9 @@ class StateMachine:
         xy = self.fs.get_coord()
         self.ser_io.send_message(MSG_BOOM, bytes([xy[0], xy[1]]))
         msg_id, payload = self.ser_io.receive_message()
+
+        # time.sleep(0.03) # von Artur hinzugefügt
+
         ok, we_won, we_hit = self.boom_handler(msg_id, payload)
         if not ok:
             self.err_out()
