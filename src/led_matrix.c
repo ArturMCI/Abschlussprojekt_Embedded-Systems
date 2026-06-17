@@ -86,22 +86,18 @@ void led_matrix_refresh_row(void)
     }
 }
 
-void led_matrix_refresh_test(void)
-{
-    led_matrix_refresh_row();
-}
-
 static void led_matrix_timer_init(void)
 {
     RCC->APB1ENR |= RCC_APB1ENR_TIM6EN;
 
     TIM6->CR1 = 0;
     TIM6->PSC = 47;    // 48 MHz / 48 = 1 MHz
-    TIM6->ARR = 399;   // 1 MHz / 1000 = 1 kHz Interrupt
+    TIM6->ARR = 399;   // 0,4 MHz / 1000 = 2,5 kHz Interrupt
 
     TIM6->DIER |= TIM_DIER_UIE;
     TIM6->EGR |= TIM_EGR_UG;
 
+    NVIC_SetPriority(TIM6_DAC_IRQn, 2);
     NVIC_EnableIRQ(TIM6_DAC_IRQn);
 
     TIM6->CR1 |= TIM_CR1_CEN;
